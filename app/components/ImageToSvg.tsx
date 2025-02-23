@@ -1,6 +1,8 @@
+// app/components/ImageToSvg.tsx
 "use client";
 
 import { useState, ChangeEvent } from "react";
+import { imagetosvg } from "@/actions/imagetosvg.actions";
 
 export default function ImageToSvg() {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -8,10 +10,9 @@ export default function ImageToSvg() {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Optional: Add client-side validation for file type
       const validTypes = [
         "image/png",
         "image/jpeg",
@@ -25,28 +26,33 @@ export default function ImageToSvg() {
         );
         return;
       }
+
       setImageFile(file);
       setSvgResult("");
       setError("");
-    }
-  };
+      setIsLoading(true);
 
-  const convertToSvg = async () => {
-    if (!imageFile) {
-      setError("Please select an image first");
-      return;
-    }
+      try {
+        // Step 1: Convert image to base64
+        const base64 = await convertImageToBase64(file);
 
-    setIsLoading(true);
-    try {
-      const base64 = await convertImageToBase64(imageFile);
-      const svg = await rasterToSvg(base64);
-      setSvgResult(svg);
-    } catch (err) {
-      setError("Error converting image to SVG");
-      console.error(err);
-    } finally {
-      setIsLoading(false);
+        // Step 2: Generate initial SVG
+        const initialSvg = await rasterToSvg(base64);
+
+        // Step 3: Send to server for optimization
+        const result = await imagetosvg(initialSvg);
+
+        if ("optimizedSvg" in result && result.optimizedSvg) {
+          setSvgResult(result.optimizedSvg);
+        } else {
+          setError(result.error || "Failed to optimize SVG");
+        }
+      } catch (err) {
+        setError("Error converting image to SVG");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -107,18 +113,12 @@ export default function ImageToSvg() {
               file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900 dark:file:text-blue-200
               hover:file:bg-blue-100 dark:hover:file:bg-blue-800"
           />
+          {isLoading && (
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              Converting...
+            </p>
+          )}
         </div>
-
-        <button
-          onClick={convertToSvg}
-          disabled={isLoading || !imageFile}
-          className="w-full bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 
-            text-white font-bold py-2 px-4 rounded
-            disabled:bg-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-600 
-            transition-colors mb-4"
-        >
-          {isLoading ? "Converting..." : "Convert to SVG"}
-        </button>
 
         {error && (
           <div className="mt-4 p-3 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded">

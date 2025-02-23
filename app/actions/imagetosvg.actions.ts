@@ -1,21 +1,22 @@
+// app/actions/imagetosvg.actions.ts
 "use server";
 
-import { optimize, OptimizedSvg } from "svgo";
+import { optimize } from "svgo";
 
-export async function optimizeSvg(svg: string) {
+export async function imagetosvg(svg: string) {
   try {
     if (!svg) {
       throw new Error("SVG content is required");
     }
 
     const result = optimize(svg, {
-      multipass: true, // Multiple optimization passes for better results
+      multipass: true,
       plugins: [
-        "preset-default", // Default optimization preset
+        "preset-default",
         {
           name: "removeAttrs",
           params: {
-            attrs: "(width|height)", // Remove dimensions to make SVG responsive
+            attrs: "(width|height)",
           },
         },
         "removeComments",
